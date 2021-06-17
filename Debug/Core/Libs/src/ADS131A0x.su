@@ -1,0 +1,13 @@
+ADS131A0x.c:61:6:ADS131A0xReset	8	static
+ADS131A0x.c:68:6:ADS131A0xSetCS	16	static
+ADS131A0x.c:81:6:ADS131A0xXferWord	24	static
+ADS131A0x.c:89:10:ADS131A0xSendCmd	32	static
+ADS131A0x.c:112:6:ADS131A0xCalibrate	8	static
+ADS131A0x.c:139:10:ADS131A0xReadRegister	24	static
+ADS131A0x.c:154:10:ADS131A0xWriteRegister	24	static
+ADS131A0x.c:168:6:ADS131A0xWriteMultiRegister	24	static
+ADS131A0x.c:172:6:ADS131A0xInit	16	static
+ADS131A0x.c:252:17:ADS131A0xGetChannels	64	static
+ADS131A0x.c:391:6:StartExtADC	8	static
+ADS131A0x.c:398:5:movingAvg	24	static
+ADS131A0x.c:408:7:interpolateValue	48	static

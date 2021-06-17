@@ -1,0 +1,6 @@
+port.c:15:6:ENTER_CRITICAL_SECTION	4	static
+port.c:20:6:EXIT_CRITICAL_SECTION	4	static
+port.c:34:1:eMBRegInputCB	24	static
+port.c:62:1:eMBRegHoldingCB	32	static
+port.c:102:1:eMBRegCoilsCB	24	static
+port.c:113:1:eMBRegDiscreteCB	16	static
