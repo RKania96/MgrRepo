@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * File: $Id: porttimer.c,v 1.1 2006/08/22 21:35:13 wolti Exp $
+ * File: $Id$
  */
 
 /* ----------------------- Platform includes --------------------------------*/
@@ -25,61 +25,68 @@
 /* ----------------------- Modbus includes ----------------------------------*/
 #include "mb.h"
 #include "mbport.h"
-#include "stm32l4xx_hal.h"
 
-extern TIM_HandleTypeDef htim16;
+/* ----------------------- static functions ---------------------------------*/
+//static void prvvTIMERExpiredISR( void );
+
+/* -----------------------    variables     ---------------------------------*/
+extern TIM_HandleTypeDef htim15;
+uint16_t timeout = 0;
+uint16_t downcounter = 0;
+
 /* ----------------------- Start implementation -----------------------------*/
-BOOL xMBPortTimersInit( USHORT usTim1Timerout50us ) //����50usʱ��
+BOOL
+xMBPortTimersInit( USHORT usTim1Timerout50us )
 {
-	
-	TIM_OC_InitTypeDef sConfigOC;
-	sConfigOC.OCMode = TIM_OCMODE_ACTIVE;
-	sConfigOC.Pulse = usTim1Timerout50us;
-	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-	sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-	HAL_TIM_OC_ConfigChannel(&htim16, &sConfigOC, TIM_CHANNEL_1);
+
+	TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+	htim15.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / 1000000) - 1; // 1 us
+	htim15.Init.Period = 50-1; // 50 us
+
+	timeout = usTim1Timerout50us;
+
+	if (HAL_TIM_Base_Init(&htim15) != HAL_OK)
+	{
+	  return FALSE;
+	}
+
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim15, &sMasterConfig) != HAL_OK)
+	{
+	  return FALSE;
+	}
+
 	return TRUE;
+
 }
 
 
-void vMBPortTimersEnable(  ) //��ʱ��
+void
+vMBPortTimersEnable(  )
 {
-	/* Clear IT flag */
-	__HAL_TIM_CLEAR_IT(&htim16, TIM_IT_CC1);
-	
-	/* Reset counter */
-	__HAL_TIM_SET_COUNTER(&htim16,0);
+    /* Enable the timer with the timeout passed to xMBPortTimersInit( ) */
+	downcounter = timeout;
+	HAL_TIM_Base_Start_IT(&htim15);
 
-	/* Enable the TIM Update interrupt */
-	__HAL_TIM_ENABLE_IT(&htim16, TIM_IT_CC1);
-
-	/* Enable the Peripheral */
-	__HAL_TIM_ENABLE(&htim16);
 }
 
-void vMBPortTimersDisable(  ) //�ر�ʱ��
+void
+vMBPortTimersDisable(  )
 {
-	/* Enable the Peripheral */
-	__HAL_TIM_DISABLE(&htim16);
+    /* Disable any pending timers. */
+	HAL_TIM_Base_Stop_IT(&htim15);
 
-	/* Clear IT flag */
-	__HAL_TIM_CLEAR_IT(&htim16, TIM_IT_CC1);
-
-	/* Reset counter */
-	__HAL_TIM_SET_COUNTER(&htim16,0);
-	
-	/* Enable the TIM Update interrupt */
-	__HAL_TIM_DISABLE_IT(&htim16, TIM_IT_CC1);
 }
 
 /* Create an ISR which is called whenever the timer has expired. This function
  * must then call pxMBPortCBTimerExpired( ) to notify the protocol stack that
  * the timer has expired.
- */
-void prvvTIMERExpiredISR( void ) //��ʱ���ж��ڵ���
+
+static void prvvTIMERExpiredISR( void )
 {
     ( void )pxMBPortCBTimerExpired(  );
 }
 
+*/

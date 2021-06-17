@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * File: $Id: port.h,v 1.1 2006/08/22 21:35:13 wolti Exp $
+ * File: $Id$
  */
 
 #ifndef _PORT_H
@@ -24,33 +24,19 @@
 
 #include <assert.h>
 #include <inttypes.h>
-#include "main.h"
+
+#include "stm32l4xx_hal.h"
 
 #define	INLINE                      inline
 #define PR_BEGIN_EXTERN_C           extern "C" {
 #define	PR_END_EXTERN_C             }
 
-extern void ENTER_CRITICAL_SECTION(void);    /* ���ж�*/
-
-extern void EXIT_CRITICAL_SECTION(void);     /* ���ж�*/ 
-
-extern UART_HandleTypeDef huart3;
-
-
-
-
-uint8_t usart3_rx_data_buff[1];
-uint8_t usart3_tx_data_buff[1];
-
-
-#define REG_INPUT_START   0
-#define REG_INPUT_NREGS   8
-#define REG_HOLDING_START 0
-#define REG_HOLDING_NREGS 8
+#define ENTER_CRITICAL_SECTION( ) ( __disable_irq())
+#define EXIT_CRITICAL_SECTION( )  ( __enable_irq())
 
 typedef uint8_t BOOL;
 
-typedef  unsigned char UCHAR;
+typedef unsigned char UCHAR;
 typedef char CHAR;
 
 typedef uint16_t USHORT;
@@ -58,9 +44,6 @@ typedef int16_t SHORT;
 
 typedef uint32_t ULONG;
 typedef int32_t LONG;
-
-typedef uint16_t u16;
-typedef uint8_t u8;
 
 #ifndef TRUE
 #define TRUE            1

@@ -1,6 +1,6 @@
 /* 
  * FreeModbus Libary: A portable Modbus implementation for Modbus ASCII/RTU.
- * Copyright (c) 2006 Christian Walter <wolti@sil.at>
+ * Copyright (c) 2006-2018 Christian Walter <cwalter@embedded-solutions.at>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * File: $Id: mbcrc.c,v 1.7 2007/02/18 23:50:27 wolti Exp $
  */
 
 /* ----------------------- Platform includes --------------------------------*/
@@ -91,10 +90,8 @@ usMBCRC16( UCHAR * pucFrame, USHORT usLen )
     while( usLen-- )
     {
         iIndex = ucCRCLo ^ *( pucFrame++ );
-        //ucCRCLo = ( UCHAR )( ucCRCHi ^ aucCRCHi[iIndex] );
-        //ucCRCHi = aucCRCLo[iIndex];
-				ucCRCLo = ( UCHAR )( ucCRCHi ^ (UCHAR)aucCRCHi[iIndex] );
-				ucCRCHi = (UCHAR)aucCRCLo[iIndex];
+        ucCRCLo = ( UCHAR )( ucCRCHi ^ aucCRCHi[iIndex] );
+        ucCRCHi = aucCRCLo[iIndex];
     }
     return ( USHORT )( ucCRCHi << 8 | ucCRCLo );
 }

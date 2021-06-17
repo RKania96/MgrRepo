@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * File: $Id: portserial.c,v 1.1 2006/08/22 21:35:13 wolti Exp $
+ * File: $Id$
  */
 
 #include "port.h"
@@ -25,85 +25,77 @@
 #include "mb.h"
 #include "mbport.h"
 
-#include "stm32l4xx_hal.h"
+/* ----------------------- static functions ---------------------------------*/
+//static void prvvUARTTxReadyISR( void );
+//static void prvvUARTRxISR( void );
 
-
-extern uint8_t usart1_tx_data_buff[1];
-extern uint8_t usart1_rx_data_buff[1];
+/* -----------------------    variables     ---------------------------------*/
 extern UART_HandleTypeDef huart3;
 
-extern void Usart1Pass(void);
 /* ----------------------- Start implementation -----------------------------*/
 void
-vMBPortSerialEnable( BOOL xRxEnable, BOOL xTxEnable ) //���ƴ��ڵ��շ��ж�
+vMBPortSerialEnable( BOOL xRxEnable, BOOL xTxEnable )
 {
-	/*Half duplex rs485 interface*/
-	if(TRUE==xRxEnable)
-	{
-		HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_RESET);
-	}
-	else
-	{
+    /* If xRXEnable enable serial receive interrupts. If xTxENable enable
+     * transmitter empty interrupts.
+     */
+
+	if (xRxEnable) {
+	  __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
+	} else {
+	  __HAL_UART_DISABLE_IT(&huart3, UART_IT_RXNE);
 	}
 
-	if(TRUE==xTxEnable)
-	{
-		HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_SET);
+	if (xTxEnable) {
+	  __HAL_UART_ENABLE_IT(&huart3, UART_IT_TXE);
+	} else {
+	  __HAL_UART_DISABLE_IT(&huart3, UART_IT_TXE);
 	}
-	else
-	{
-		HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_RESET);
-	}
+
 }
-/*****************************************
-* ���ô��� Ŀǰ���˲���������������Ч 
-* Usart1 9600-8-N-1
-*****************************************/
-BOOL 
+
+BOOL
 xMBPortSerialInit( UCHAR ucPORT, ULONG ulBaudRate, UCHAR ucDataBits, eMBParity eParity )
 {
-
-	HAL_UART_Receive_IT(&huart3, usart3_rx_data_buff, 1);
-	//HAL_UART_Transmit_IT(&huart1, usart1_tx_data_buff, 1);
-	return TRUE;
+    return TRUE;
 }
-/*****************************************
-*	old serial putbyte, use put buffer instead
-*****************************************/
 
 BOOL
 xMBPortSerialPutByte( CHAR ucByte )
 {
-	volatile int i;
-	usart1_tx_data_buff[0] = ucByte;
-	HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_SET);
-	for(i=0; i<1000; i++){}
-		HAL_UART_Transmit(&huart3, usart3_tx_data_buff, 1, 1000);
-    SET_BIT(huart3.Instance->CR1, USART_CR1_TCIE);
+    /* Put a byte in the UARTs transmit buffer. This function is called
+     * by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been
+     * called. */
+	//1
+    USART3->TDR = ucByte; // jak nie dziala sprobuj huart3.Instance->TDR
+    //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
     return TRUE;
-}
+    //2
+    //return (HAL_OK == HAL_UART_Transmit(&huart3, (uint8_t*)&ucByte, 1, 10));
+	//if(HAL_OK == HAL_UART_Transmit(&huart3, (uint8_t*)&ucByte, 1, 10)) {
+	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+	  //return TRUE;
+	//}
 
-/*****************************************
-*	xMBPortSerialPutBuff
-*	input ptr buffer, length of buffer
-*****************************************/
-BOOL
-xMBPortSerialPutBuff( CHAR * ucBuff,CHAR len )
-{
-	volatile int i;
-	/*Enable transfer with change rs485 pin*/
-	HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_SET);
-	for(i=0; i<1000; i++){}
-	/*start dma transfer*/
-	HAL_UART_Transmit_DMA(&huart3,(uint8_t *) ucBuff, len);
-    return TRUE;
+	//return FALSE;
+
 }
 
 BOOL
 xMBPortSerialGetByte( CHAR * pucByte )
 {
-	*pucByte = huart3.Instance->RDR;
-    return TRUE;
+    /* Return the byte in the UARTs receive buffer. This function is called
+     * by the protocol stack after pxMBFrameCBByteReceived( ) has been called.
+     */
+    //1
+    *pucByte = (USART3->RDR & (uint16_t)0x00FF); // jak nie dziala sprobuj huart3.Instance->RDR
+    //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+    //2
+	//*pucByte = (uint8_t)(huart3.Instance->RDR & (uint8_t)0x00FF);
+	return TRUE;
+
+
+
 }
 
 /* Create an interrupt handler for the transmit buffer empty interrupt
@@ -111,18 +103,19 @@ xMBPortSerialGetByte( CHAR * pucByte )
  * call pxMBFrameCBTransmitterEmpty( ) which tells the protocol stack that
  * a new character can be sent. The protocol stack will then call 
  * xMBPortSerialPutByte( ) to send the character.
- */
- void prvvUARTTxReadyISR( void )
+
+static void prvvUARTTxReadyISR( void )
 {
     pxMBFrameCBTransmitterEmpty(  );
 }
-
+*/
 /* Create an interrupt handler for the receive interrupt for your target
  * processor. This function should then call pxMBFrameCBByteReceived( ). The
  * protocol stack will then call xMBPortSerialGetByte( ) to retrieve the
  * character.
- */
-void prvvUARTRxISR( void )
+
+static void prvvUARTRxISR( void )
 {
-     pxMBFrameCBByteReceived(  );
+    pxMBFrameCBByteReceived(  );
 }
+*/

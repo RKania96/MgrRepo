@@ -1,6 +1,6 @@
 /* 
  * FreeModbus Libary: A portable Modbus implementation for Modbus ASCII/RTU.
- * Copyright (c) 2006 Christian Walter <wolti@sil.at>
+ * Copyright (c) 2006-2018 Christian Walter <cwalter@embedded-solutions.at>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * File: $Id: mbrtu.c,v 1.18 2007/09/12 10:15:56 wolti Exp $
  */
 
 /* ----------------------- System includes ----------------------------------*/
@@ -42,7 +41,6 @@
 
 #include "mbcrc.h"
 #include "mbport.h"
-#include <assert.h>
 
 /* ----------------------- Defines ------------------------------------------*/
 #define MB_SER_PDU_SIZE_MIN     4       /*!< Minimum size of a Modbus RTU frame. */
@@ -133,6 +131,7 @@ eMBRTUStart( void )
      * modbus protocol stack until the bus is free.
      */
     eRcvState = STATE_RX_INIT;
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
     vMBPortSerialEnable( TRUE, FALSE );
     vMBPortTimersEnable(  );
 
@@ -155,7 +154,7 @@ eMBRTUReceive( UCHAR * pucRcvAddress, UCHAR ** pucFrame, USHORT * pusLength )
     eMBErrorCode    eStatus = MB_ENOERR;
 
     ENTER_CRITICAL_SECTION(  );
-    ////assert( usRcvBufferPos < MB_SER_PDU_SIZE_MAX );
+    assert( usRcvBufferPos < MB_SER_PDU_SIZE_MAX );
 
     /* Length and CRC check */
     if( ( usRcvBufferPos >= MB_SER_PDU_SIZE_MIN )
@@ -208,18 +207,13 @@ eMBRTUSend( UCHAR ucSlaveAddress, const UCHAR * pucFrame, USHORT usLength )
 
         /* Calculate CRC16 checksum for Modbus-Serial-Line-PDU. */
         usCRC16 = usMBCRC16( ( UCHAR * ) pucSndBufferCur, usSndBufferCount );
-        pucSndBufferCur[usSndBufferCount++] = ( UCHAR )( usCRC16 & 0xFF );
-        pucSndBufferCur[usSndBufferCount++] = ( UCHAR )( usCRC16 >> 8 );  
-			
-			//ucRTUBuf[usSndBufferCount++] = ( UCHAR )( usCRC16 & 0xFF );
-        //ucRTUBuf[usSndBufferCount++] = ( UCHAR )( usCRC16 >> 8 );
+        ucRTUBuf[usSndBufferCount++] = ( UCHAR )( usCRC16 & 0xFF );
+        ucRTUBuf[usSndBufferCount++] = ( UCHAR )( usCRC16 >> 8 );
 
         /* Activate the transmitter. */
         eSndState = STATE_TX_XMIT;
-			
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
         vMBPortSerialEnable( FALSE, TRUE );
-			
-				xMBRTUTransmitFSM();
     }
     else
     {
@@ -235,7 +229,7 @@ xMBRTUReceiveFSM( void )
     BOOL            xTaskNeedSwitch = FALSE;
     UCHAR           ucByte;
 
-    ////assert( eSndState == STATE_TX_IDLE );
+    assert( eSndState == STATE_TX_IDLE );
 
     /* Always read the character. */
     ( void )xMBPortSerialGetByte( ( CHAR * ) & ucByte );
@@ -294,7 +288,7 @@ xMBRTUTransmitFSM( void )
 {
     BOOL            xNeedPoll = FALSE;
 
-    ////assert( eRcvState == STATE_RX_IDLE );
+    assert( eRcvState == STATE_RX_IDLE );
 
     switch ( eSndState )
     {
@@ -302,6 +296,7 @@ xMBRTUTransmitFSM( void )
          * idle state.  */
     case STATE_TX_IDLE:
         /* enable receiver/disable transmitter. */
+    	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
         vMBPortSerialEnable( TRUE, FALSE );
         break;
 
@@ -309,19 +304,18 @@ xMBRTUTransmitFSM( void )
         /* check if we are finished. */
         if( usSndBufferCount != 0 )
         {
-//						xMBPortSerialPutByte( ( CHAR )*pucSndBufferCur );
-//            pucSndBufferCur++;  /* next byte in sendbuffer. */
-//            usSndBufferCount--;
-						xMBPortSerialPutBuff( pucSndBufferCur, usSndBufferCount);
-            pucSndBufferCur+=usSndBufferCount;  /* next byte in sendbuffer. */
-            usSndBufferCount = 0;					
+            xMBPortSerialPutByte( ( CHAR )*pucSndBufferCur );
+            pucSndBufferCur++;  /* next byte in sendbuffer. */
+            usSndBufferCount--;
         }
         else
         {
             xNeedPoll = xMBPortEventPost( EV_FRAME_SENT );
             /* Disable transmitter. This prevents another transmit buffer
              * empty interrupt. */
+            HAL_Delay(1);
             vMBPortSerialEnable( TRUE, FALSE );
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
             eSndState = STATE_TX_IDLE;
         }
         break;
@@ -354,9 +348,8 @@ xMBRTUTimerT35Expired( void )
 
         /* Function called in an illegal state. */
     default:
-		{}
-     //   assert( ( eRcvState == STATE_RX_INIT ) ||
-     //           ( eRcvState == STATE_RX_RCV ) || ( eRcvState == STATE_RX_ERROR ) );
+        assert( ( eRcvState == STATE_RX_INIT ) ||
+                ( eRcvState == STATE_RX_RCV ) || ( eRcvState == STATE_RX_ERROR ) );
     }
 
     vMBPortTimersDisable(  );
