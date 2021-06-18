@@ -30,7 +30,7 @@
 //static void prvvTIMERExpiredISR( void );
 
 /* -----------------------    variables     ---------------------------------*/
-extern TIM_HandleTypeDef htim15;
+extern TIM_HandleTypeDef htim2;
 uint16_t timeout = 0;
 uint16_t downcounter = 0;
 
@@ -41,19 +41,19 @@ xMBPortTimersInit( USHORT usTim1Timerout50us )
 
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-	htim15.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / 1000000) - 1; // 1 us
-	htim15.Init.Period = 50-1; // 50 us
+	htim2.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / 1000000) - 1; // 1 us
+	htim2.Init.Period = 50-1; // 50 us
 
 	timeout = usTim1Timerout50us;
 
-	if (HAL_TIM_Base_Init(&htim15) != HAL_OK)
+	if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
 	{
 	  return FALSE;
 	}
 
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim15, &sMasterConfig) != HAL_OK)
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
 	{
 	  return FALSE;
 	}
@@ -68,7 +68,7 @@ vMBPortTimersEnable(  )
 {
     /* Enable the timer with the timeout passed to xMBPortTimersInit( ) */
 	downcounter = timeout;
-	HAL_TIM_Base_Start_IT(&htim15);
+	HAL_TIM_Base_Start_IT(&htim2);
 
 }
 
@@ -76,7 +76,7 @@ void
 vMBPortTimersDisable(  )
 {
     /* Disable any pending timers. */
-	HAL_TIM_Base_Stop_IT(&htim15);
+	HAL_TIM_Base_Stop_IT(&htim2);
 
 }
 

@@ -28,6 +28,8 @@
 #include "fonts.h"
 #include "math.h"
 #include "mb.h"
+#include "mbport.h"
+
 
 /* USER CODE END Includes */
 
@@ -48,6 +50,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern uint16_t downcounter;
 
 extern uint8_t usart3_rx_data_buff[1];
 extern uint8_t usart3_tx_data_buff[1];
@@ -70,9 +73,9 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi);
 
 
 extern void TimingDelay_Decrement(void);
-extern void prvvTIMERExpiredISR( void );
-extern void prvvUARTTxReadyISR(void);
-extern void prvvUARTRxISR(void);
+//extern void prvvTIMERExpiredISR( void );
+//extern void prvvUARTTxReadyISR(void);
+//extern void prvvUARTRxISR(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -83,6 +86,7 @@ extern void prvvUARTRxISR(void);
 /* External variables --------------------------------------------------------*/
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi3;
+extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim15;
 extern UART_HandleTypeDef huart3;
@@ -260,6 +264,26 @@ void TIM1_BRK_TIM15_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM2 global interrupt.
+  */
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+	  if(__HAL_TIM_GET_FLAG(&htim2, TIM_FLAG_UPDATE) != RESET && __HAL_TIM_GET_IT_SOURCE(&htim2, TIM_IT_UPDATE) !=RESET) {
+	    __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
+	    if (!--downcounter) {
+		  //cycle1 = DWT->CYCCNT;
+	      pxMBPortCBTimerExpired();
+	    }
+	  }
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+
+  /* USER CODE END TIM2_IRQn 1 */
+}
+
+/**
   * @brief This function handles SPI1 global interrupt.
   */
 void SPI1_IRQHandler(void)
@@ -279,7 +303,41 @@ void SPI1_IRQHandler(void)
 void USART3_IRQHandler(void)
 {
   /* USER CODE BEGIN USART3_IRQn 0 */
+	  uint32_t tmp_flag = __HAL_UART_GET_FLAG(&huart3, UART_FLAG_RXNE);
+	  uint32_t tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart3, UART_IT_RXNE);
 
+	  if((tmp_flag != RESET) && (tmp_it_source != RESET)) {
+		 pxMBFrameCBByteReceived();
+
+		 //CHAR cByte;
+		 //( void )xMBPortSerialGetByte( &cByte );
+
+	//	 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+	//	 if( uiCnt < 10 )
+	//	   {
+	//		 while(uiCnt < 10)
+	//		 {
+	//			 ( void )xMBPortSerialPutByte( 'a' );
+	//			 HAL_Delay(100);
+	//			 uiCnt++;
+	//		 }
+	//
+	//	     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+	//	   }
+	//	 else
+	//	   {
+	//	     vMBPortSerialEnable( FALSE, FALSE );
+	//	     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+	//	   }
+
+		 __HAL_UART_CLEAR_PEFLAG(&huart3);
+		 return;
+	  }
+
+	  if((__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TXE) != RESET) &&(__HAL_UART_GET_IT_SOURCE(&huart3, UART_IT_TXE) != RESET)) {
+		 pxMBFrameCBTransmitterEmpty();
+		 return ;
+	  }
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */
@@ -466,32 +524,32 @@ cntrep++;
 }
 
 
-void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if(htim->Instance == TIM1)
-	{
-		prvvTIMERExpiredISR( );
-	}
-}
+//void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//	if(htim->Instance == TIM1)
+//	{
+//		prvvTIMERExpiredISR( );
+//	}
+//}
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart->Instance == USART3)
-	{
-		prvvUARTRxISR();
-		HAL_UART_Receive_IT(&huart3, usart3_rx_data_buff, 1);
-	}
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-
-	if(huart->Instance == USART3)
-	{
-		HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_RESET);
-		prvvUARTTxReadyISR();
-	}
-}
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+//{
+//	if(huart->Instance == USART3)
+//	{
+//		prvvUARTRxISR();
+//		HAL_UART_Receive_IT(&huart3, usart3_rx_data_buff, 1);
+//	}
+//}
+//
+//void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+//{
+//
+//	if(huart->Instance == USART3)
+//	{
+//		HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, GPIO_PIN_RESET);
+//		prvvUARTTxReadyISR();
+//	}
+//}
 
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)

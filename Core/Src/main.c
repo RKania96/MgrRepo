@@ -30,7 +30,6 @@
 
 #include "mb.h"
 #include "mbport.h"
-#include "port.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +54,7 @@ I2C_HandleTypeDef hi2c2;
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi3;
 
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim15;
 TIM_HandleTypeDef htim16;
@@ -81,10 +81,10 @@ uint32_t TxMailbox;
 
 
 
-volatile USHORT   usRegInputStart = REG_INPUT_START;
-volatile USHORT   usRegInputBuf[REG_INPUT_NREGS];
-volatile USHORT   usRegHoldingStart = REG_HOLDING_START;
-volatile USHORT   usRegHoldingBuf[REG_HOLDING_NREGS];
+//volatile USHORT   usRegInputStart = REG_INPUT_START;
+//volatile USHORT   usRegInputBuf[REG_INPUT_NREGS];
+//volatile USHORT   usRegHoldingStart = REG_HOLDING_START;
+//volatile USHORT   usRegHoldingBuf[REG_HOLDING_NREGS];
 //static USHORT temp;
 volatile uint32_t TimingDelay;
 
@@ -102,6 +102,7 @@ static void MX_SPI1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_TIM15_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -148,6 +149,7 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM16_Init();
   MX_TIM15_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 
@@ -235,13 +237,13 @@ int main(void)
 
 	HAL_CAN_Start(&hcan1);
 
-	HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, 1);
+	//HAL_GPIO_WritePin(USART3_DIR_GPIO_Port, USART3_DIR_Pin, 1);
 
 
 
 
-	// eMBInit(MB_RTU, 0x01, 1, 115200, MB_PAR_NONE);
-	//   eMBEnable();
+	eMBInit(MB_RTU, 0x01, 5, 9600, MB_PAR_NONE);
+	eMBEnable();
 
   /* USER CODE END 2 */
 
@@ -263,9 +265,9 @@ int main(void)
 		}
 		//HAL_UART_Transmit(&huart3, TxData, 8, 10);
 
-	//	eMBPoll();
+	eMBPoll();
 
-		HAL_Delay(100);
+	HAL_Delay(100);
 
     /* USER CODE END WHILE */
 
@@ -496,6 +498,51 @@ static void MX_SPI3_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 65535;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief TIM6 Initialization Function
   * @param None
   * @retval None
@@ -691,7 +738,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 9600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
