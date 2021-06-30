@@ -1,12 +1,17 @@
 #include "mb.h"
 #include "mbport.h"
+#include "mbdata.h"
 
-#define NB_REG_INPUT_SIZE  10						///< Input register size
-uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {50,12,30,4,54,63,71,86,9,99};		///< Input register
+//#define NB_REG_INPUT_SIZE  10						///< Input register size
+//uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {10,11,12,13,14,15,16,17,18,19};		///< Input register
+//
+//#define NB_REG_HOLD_SIZE  10						///< Keep register size
+//uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
 
-#define NB_REG_HOLD_SIZE  10						///< Keep register size
-uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
 
+extern uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE];		///< Input register
+//
+//extern uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
 /**
    * CMD3 callback function
    * @param pucRegBuffer stores the value of the read input register

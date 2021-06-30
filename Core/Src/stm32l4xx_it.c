@@ -29,6 +29,7 @@
 #include "math.h"
 #include "mb.h"
 #include "mbport.h"
+#include "mbdata.h"
 
 
 /* USER CODE END Includes */
@@ -55,9 +56,19 @@ extern uint16_t downcounter;
 extern uint8_t usart3_rx_data_buff[1];
 extern uint8_t usart3_tx_data_buff[1];
 
-
 uint8_t usart1_tx_data_buff[1]={0};
 uint8_t usart1_rx_data_buff[1]={0};
+
+//#define NB_REG_INPUT_SIZE  10						///< Input register size
+//uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {10,11,12,13,14,15,16,17,18,19};		///< Input register
+//
+//#define NB_REG_HOLD_SIZE  10						///< Keep register size
+//uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
+
+extern uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE];		///< Input register
+//
+//extern uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
+
 
 
 
@@ -493,6 +504,13 @@ cntrep++;
 
 	// Moim zdaniem tu najlepiej dodać obsługę RS-485
 
+//	MB_REG_INPUT_BUF[0] = (uint16_t) (measf.Ch1*1000);
+//	MB_REG_INPUT_BUF[1] = (uint16_t) (measf.Ch2*1000);
+//	MB_REG_INPUT_BUF[2] = (uint16_t) (measf.Ch3*1000);
+//	MB_REG_INPUT_BUF[3] = (uint16_t) (measf.Ch4*1000.0);
+//
+//	MB_REG_INPUT_BUF[4] = (uint16_t) (cntrep);
+	MB_REG_INPUT_BUF[5] = (uint16_t) (temperature);
 
 	//
 
