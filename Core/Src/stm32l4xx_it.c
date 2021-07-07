@@ -108,6 +108,107 @@ extern TIM_HandleTypeDef htim6;
 extern char outputParam[5];
 extern float temperature;
 extern char test[15];
+
+//int FloatToInt(float fvalue)
+int convertTPP(float fvalue)
+{
+	uint16_t sign = 0;
+	if(0 > fvalue)
+	{
+		sign |= (1 << 15);
+		fvalue *= (-1);
+	}
+
+	uint16_t r = (uint16_t)fvalue;
+	uint8_t d = (uint8_t)((fvalue-r)*100);
+
+	uint16_t rd = ((uint16_t)r << 8) | d;
+	rd |= sign;
+
+	return rd;
+}
+int convertII(float fvalue, bool isMili)
+{
+	uint16_t sign = 0;
+	if(0 > fvalue)
+	{
+		sign |= (1 << 15);
+		fvalue *= (-1);
+	}
+
+	uint8_t r = (uint8_t)fvalue;
+	uint8_t d = (uint8_t)((fvalue-r)*100);
+
+	uint16_t rd = (((uint16_t)r << 8) | d);
+	rd |= sign;
+
+	if(isMili) {rd |= (1 << 7); }
+
+	return rd;
+}
+
+int convertVV(float fvalue, bool isFirstCalc, bool isMili)
+{
+	uint16_t sign = 0;
+	if(0 > fvalue)
+	{
+		sign |= (1 << 15);
+		fvalue *= (-1);
+	}
+
+	uint16_t r = (uint16_t)fvalue;
+	uint16_t d = (uint16_t)((fvalue-r)*100);
+
+	if(isFirstCalc)
+	{
+		if(isMili) { r |= (1 << 14); }
+		r |= sign;
+		return r;
+	}
+	return d;
+}
+
+typedef enum
+{
+	Temp = 0,
+	V1	 = 1,
+	I1	 = 3,
+	V2	 = 4,
+	I2	 = 6,
+	P1	 = 7,
+	P2	 = 8
+} mReg;
+void ConvertToModbusDataType(float fValue, mReg mRegister, bool isMili )
+{
+	switch(mRegister)
+	{
+	case Temp:
+		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
+		break;
+	case V1:
+		MB_REG_INPUT_BUF[mRegister] = convertVV(fValue, true, isMili );
+		MB_REG_INPUT_BUF[mRegister+1] = convertVV(fValue, false, false);
+		break;
+	case I1:
+		MB_REG_INPUT_BUF[mRegister] = convertII(fValue, isMili);
+		break;
+	case V2:
+		MB_REG_INPUT_BUF[mRegister] = convertVV(fValue, true, isMili);
+		MB_REG_INPUT_BUF[mRegister+1] = convertVV(fValue, false, false);
+		break;
+	case I2:
+		MB_REG_INPUT_BUF[mRegister] = convertII(fValue, isMili);
+		break;
+	case P1:
+		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
+		break;
+	case P2:
+		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
+		break;
+	default:
+		break;
+	}
+}
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -414,10 +515,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				sprintf(test, "%.2f", measf.Ch4);
 				ST7735_WriteString(135, 0 + 5, " V", Font_11x18, ST7735_WHITE,
 						ST7735_BLUE);
+				ConvertToModbusDataType(measf.Ch4, V1, false);
 			} else if (fabs(measf.Ch4) <= 1.0) {
 				sprintf(test, "%.2f", measf.Ch4 * 1000.0);
 				ST7735_WriteString(135, 0 + 5, "mV", Font_11x18, ST7735_WHITE,
 						ST7735_BLUE);
+				ConvertToModbusDataType(measf.Ch4*1000, V1, true);
 			}
 
 
@@ -428,10 +531,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f", measf.Ch3);
 					ST7735_WriteString(135, 25 + 5, " A", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
+					ConvertToModbusDataType(measf.Ch3, I1, false);
 				} else if (fabs(measf.Ch3) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch3 * 1000.0);
 					ST7735_WriteString(135, 25 + 5, "mA", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
+					ConvertToModbusDataType(measf.Ch3*1000, I1, true);
 				}
 
 
@@ -443,10 +548,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f  ", measf.Ch2);
 					ST7735_WriteString(135, 50 + 5, " V", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
+					ConvertToModbusDataType(measf.Ch2, V2, false);
 				} else if (fabs(measf.Ch2) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch2 * 1000.0);
 					ST7735_WriteString(135, 50 + 5, "mV", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
+					ConvertToModbusDataType(measf.Ch2*1000, V2, true);
 				}
 
 
@@ -457,16 +564,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f  ", measf.Ch1);
 					ST7735_WriteString(135, 75 + 5, " A", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
+					ConvertToModbusDataType(measf.Ch1, I2, false);
 				} else if (fabs(measf.Ch1) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch1 * 1000.0);
 					ST7735_WriteString(135, 75 + 5, "mA", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
+					ConvertToModbusDataType(measf.Ch2*1000, I2, true);
 				}
 
 			ST7735_WriteString(35, 75 + 5, test, Font_11x18, ST7735_WHITE, ST7735_BLUE);
 
 		    sprintf(test, "%.1f*C", temperature);
 			ST7735_WriteString(5, 100 + 5, test, Font_11x18, ST7735_WHITE, ST7735_BLUE);
+			ConvertToModbusDataType(temperature, Temp, false);
 
 
 static uint8_t cntrep;
@@ -479,8 +589,8 @@ cntrep++;
 		if(cnt == 0)
 		{
 			ST7735_WriteString(80, 100 + 5, "Ef", Font_11x18, ST7735_WHITE, ST7735_BLUE);
-			 sprintf(outputParam, "%.2f %",measf.Eff);
-					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
+			sprintf(outputParam, "%.2f %",measf.Eff);
+			ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
 
 		}
 		else if(cnt == 1)
@@ -488,6 +598,7 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "P1", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			 sprintf(outputParam, "%.2f %",measf.P1);
 					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
+					ConvertToModbusDataType(measf.P1, P1, false);
 
 		}
 		else if(cnt == 2)
@@ -495,6 +606,7 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "P2", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			 sprintf(outputParam, "%.2f %",measf.P2);
 					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
+					ConvertToModbusDataType(measf.P2, P2, false);
 
 		}
 		cnt ++ ;
@@ -504,15 +616,6 @@ cntrep++;
 
 	// Moim zdaniem tu najlepiej dodać obsługę RS-485
 
-//	MB_REG_INPUT_BUF[0] = (uint16_t) (measf.Ch1*1000);
-//	MB_REG_INPUT_BUF[1] = (uint16_t) (measf.Ch2*1000);
-//	MB_REG_INPUT_BUF[2] = (uint16_t) (measf.Ch3*1000);
-//	MB_REG_INPUT_BUF[3] = (uint16_t) (measf.Ch4*1000.0);
-//
-//	MB_REG_INPUT_BUF[4] = (uint16_t) (cntrep);
-	MB_REG_INPUT_BUF[5] = (uint16_t) (temperature);
-
-	//
 
 	}
 
@@ -523,21 +626,32 @@ cntrep++;
 
 	{
 		if (measf.P1 / measf.P2 > 1.0)
+		{
 			measf.Eff = measf.P1 / measf.P2;
+		}
 		else
+		{
 			measf.Eff = measf.P2 / measf.P1;
+		}
 
 		if (fabs(measf.Ch3) >= 0.05)
+		{
 			measf.Q_CH1 = measf.Q_CH1 + (measf.Ch3 / 36000.0L);
+		}
 
 		if (fabs(measf.Ch1) >= 0.05)
+		{
 			measf.Q_CH2 = measf.Q_CH2 + (measf.Ch1 / 36000.0L);
+		}
 
 		if (fabs(measf.P1) >= 1.0)
+		{
 			measf.EnergyCH1 = measf.EnergyCH1 + (measf.P1 / 36000.0L);
-
+		}
 		if (fabs(measf.P2) >= 1.0)
+		{
 			measf.EnergyCH2 = measf.EnergyCH2 + (measf.P2 / 36000.0L);
+		}
 	}
 }
 

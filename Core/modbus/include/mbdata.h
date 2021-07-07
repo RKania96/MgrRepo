@@ -1,8 +1,8 @@
 /*
  * mbdata.h
  *
- *  Created on: 25 cze 2021
- *      Author: radak
+ *  Created on: xx cze 2021
+ *      Author: xx xx
  */
 
 #ifndef MODBUS_INCLUDE_MBDATA_H_
