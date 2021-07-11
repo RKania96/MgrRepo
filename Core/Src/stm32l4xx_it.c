@@ -109,42 +109,36 @@ extern char outputParam[5];
 extern float temperature;
 extern char test[15];
 
-//int FloatToInt(float fvalue)
-int convertTPP(float fvalue)
+
+int convertTPP(float fValue)
 {
-	uint16_t sign = 0;
-	if(0 > fvalue)
+	uint16_t iValue = 0;
+
+	if(0 > fValue)
 	{
-		sign |= (1 << 15);
-		fvalue *= (-1);
+		iValue |= (1 << 15);
+		fValue *= (-1);
 	}
 
-	uint16_t r = (uint16_t)fvalue;
-	uint8_t d = (uint8_t)((fvalue-r)*100);
+	iValue |= (uint16_t)(fValue*10);
 
-	uint16_t rd = ((uint16_t)r << 8) | d;
-	rd |= sign;
-
-	return rd;
+	return iValue;
 }
-int convertII(float fvalue, bool isMili)
+int convertII(float fValue, bool isMili)
 {
-	uint16_t sign = 0;
-	if(0 > fvalue)
+	uint16_t iValue = 0;
+
+	if(0 > fValue)
 	{
-		sign |= (1 << 15);
-		fvalue *= (-1);
+		iValue |= (1 << 15);
+		fValue *= (-1);
 	}
 
-	uint8_t r = (uint8_t)fvalue;
-	uint8_t d = (uint8_t)((fvalue-r)*100);
+	iValue |= (uint16_t)(fValue*100);
 
-	uint16_t rd = (((uint16_t)r << 8) | d);
-	rd |= sign;
+	if(isMili) { iValue |= (1 << 14); }
 
-	if(isMili) {rd |= (1 << 7); }
-
-	return rd;
+	return iValue;
 }
 
 int convertVV(float fvalue, bool isFirstCalc, bool isMili)
