@@ -162,16 +162,37 @@ int convertVV(float fvalue, bool isFirstCalc, bool isMili)
 	return d;
 }
 
+int convertEQ(float fValue, bool isFirstCalc)
+{
+	uint16_t r = (uint16_t)fValue;
+	uint32_t d = (uint32_t)((fValue-r)*1000000);
+
+	if(isFirstCalc)
+	{
+		r = (r << 4) | ( d >> 16 );
+		return r;
+	}
+
+	d &= 0xFFFF;
+	return d;
+}
+
 typedef enum
 {
-	Temp = 0,
-	V1	 = 1,
-	I1	 = 3,
-	V2	 = 4,
-	I2	 = 6,
-	P1	 = 7,
-	P2	 = 8
+	Temp 		= 0,
+	V1	 		= 1,
+	I1	 		= 3,
+	V2	 		= 4,
+	I2	 		= 6,
+	P1			= 7,
+	P2			= 8,
+	Eff			= 9,
+	Q_CH1		= 10,
+	Q_CH2		= 12,
+	EnergyCH1 	= 14,
+	EnergyCH2 	= 16
 } mReg;
+
 void ConvertToModbusDataType(float fValue, mReg mRegister, bool isMili )
 {
 	switch(mRegister)
@@ -198,6 +219,25 @@ void ConvertToModbusDataType(float fValue, mReg mRegister, bool isMili )
 		break;
 	case P2:
 		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
+		break;
+	case Eff:
+		MB_REG_INPUT_BUF[mRegister] = (int)fValue;
+		break;
+	case Q_CH1:
+		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
+		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
+		break;
+	case Q_CH2:
+		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
+		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
+		break;
+	case EnergyCH1:
+		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
+		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
+		break;
+	case EnergyCH2:
+		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
+		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
 		break;
 	default:
 		break;
@@ -585,7 +625,6 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "Ef", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			sprintf(outputParam, "%.2f %",measf.Eff);
 			ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-
 		}
 		else if(cnt == 1)
 		{
@@ -621,30 +660,36 @@ cntrep++;
 	{
 		if (measf.P1 / measf.P2 > 1.0)
 		{
-			measf.Eff = measf.P1 / measf.P2;
+			measf.Eff = ( measf.P2 / measf.P1 ) * 100;
+			ConvertToModbusDataType(measf.Eff, Eff, false);
 		}
 		else
 		{
-			measf.Eff = measf.P2 / measf.P1;
+			measf.Eff = ( measf.P1 / measf.P2 ) * 100;
+			ConvertToModbusDataType(measf.Eff, Eff, false);
 		}
 
 		if (fabs(measf.Ch3) >= 0.05)
 		{
 			measf.Q_CH1 = measf.Q_CH1 + (measf.Ch3 / 36000.0L);
+			ConvertToModbusDataType(fabs((float)measf.Q_CH1), Q_CH1, false);
 		}
 
 		if (fabs(measf.Ch1) >= 0.05)
 		{
 			measf.Q_CH2 = measf.Q_CH2 + (measf.Ch1 / 36000.0L);
+			ConvertToModbusDataType(fabs((float)measf.Q_CH2), Q_CH2, false);
 		}
 
 		if (fabs(measf.P1) >= 1.0)
 		{
 			measf.EnergyCH1 = measf.EnergyCH1 + (measf.P1 / 36000.0L);
+			ConvertToModbusDataType(fabs((float)measf.EnergyCH1), EnergyCH1, false);
 		}
 		if (fabs(measf.P2) >= 1.0)
 		{
 			measf.EnergyCH2 = measf.EnergyCH2 + (measf.P2 / 36000.0L);
+			ConvertToModbusDataType(fabs((float)measf.EnergyCH2), EnergyCH2, false);
 		}
 	}
 }
