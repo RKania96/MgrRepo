@@ -31,6 +31,8 @@
 #include "mbport.h"
 #include "mbdata.h"
 
+#include "UART_RingBuffer.h"
+
 
 /* USER CODE END Includes */
 
@@ -58,6 +60,8 @@ extern uint8_t usart3_tx_data_buff[1];
 
 uint8_t usart1_tx_data_buff[1]={0};
 uint8_t usart1_rx_data_buff[1]={0};
+
+extern void UART_IRQHandler ();
 
 //#define NB_REG_INPUT_SIZE  10						///< Input register size
 //uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {10,11,12,13,14,15,16,17,18,19};		///< Input register
@@ -100,6 +104,7 @@ extern SPI_HandleTypeDef hspi3;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim15;
+extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 
@@ -444,6 +449,20 @@ void SPI1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles USART1 global interrupt.
+  */
+void USART1_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART1_IRQn 0 */
+	UART_IRQHandler();
+  /* USER CODE END USART1_IRQn 0 */
+  //HAL_UART_IRQHandler(&huart1);
+  /* USER CODE BEGIN USART1_IRQn 1 */
+
+  /* USER CODE END USART1_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART3 global interrupt.
   */
 void USART3_IRQHandler(void)
@@ -735,8 +754,6 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 		NVIC_SystemReset();
 	}
 }
-
-
 
 
 /* USER CODE END 1 */

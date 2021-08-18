@@ -1,6 +1,6 @@
 #MicroXplorer Configuration settings - do not modify
 Mcu.Family=STM32L4
-NVIC.USART3_IRQn=true\:0\:0\:true\:false\:true\:true\:true
+NVIC.USART3_IRQn=true\:7\:0\:true\:false\:true\:true\:true
 ProjectManager.MainLocation=Core/Src
 I2C2.IPParameters=Timing,I2C_Speed_Mode
 PA15\ (JTDI).GPIOParameters=GPIO_Label
@@ -136,6 +136,7 @@ RCC.LPUART1Freq_Value=80000000
 SPI3.IPParameters=VirtualType,Mode,Direction,CalculateBaudRate,DataSize,BaudRatePrescaler,CLKPhase
 PB13.Mode=I2C
 TIM16.Prescaler=79
+NVIC.USART1_IRQn=true\:0\:0\:false\:false\:true\:true\:true
 SPI1.BaudRatePrescaler=SPI_BAUDRATEPRESCALER_8
 CAN1.CalculateTimeBit=3200.00
 ProjectManager.CustomerFirmwarePackage=

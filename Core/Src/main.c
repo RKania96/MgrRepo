@@ -26,8 +26,9 @@
 #include "tmp116.h"
 #include "st7735.h"
 #include "math.h"
+#include "GetTime.h"
 
-
+#include "MQTT.h"
 #include "mb.h"
 #include "mbport.h"
 /* USER CODE END Includes */
@@ -95,7 +96,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
@@ -142,7 +142,6 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C2_Init();
   MX_USART3_UART_Init();
-  MX_USART1_UART_Init();
   MX_CAN1_Init();
   MX_SPI3_Init();
   MX_SPI1_Init();
@@ -152,6 +151,8 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   NVIC_DisableIRQ(EXTI9_5_IRQn);
+
+  int MqttState = MQTTClient_Start();
 
 
 
@@ -245,12 +246,16 @@ int main(void)
 	eMBInit(MB_RTU, 0x01, 5, 9600, MB_PAR_NONE);
 	eMBEnable();
 
+	GetTime_Init();
+	GetTime_timeoutBegin();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	  TMP116_get_Temperature(&temperature);
 		if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) != 0) {
 			TxData[0] = 0x55;
@@ -268,6 +273,13 @@ int main(void)
 	eMBPoll();
 
 	HAL_Delay(100);
+
+	if(MqttState !=0 && !(GetTime_timeoutIsExpired()))
+	{
+		MQTTClient_Publish(&measf);
+		GetTime_timeoutBegin();
+	}
+
 
     /* USER CODE END WHILE */
 
@@ -687,40 +699,40 @@ static void MX_TIM16_Init(void)
 
 }
 
-/**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
-
-  /* USER CODE END USART1_Init 2 */
-
-}
+///**
+//  * @brief USART1 Initialization Function
+//  * @param None
+//  * @retval None
+//  */
+//static void MX_USART1_UART_Init(void)
+//{
+//
+//  /* USER CODE BEGIN USART1_Init 0 */
+//
+//  /* USER CODE END USART1_Init 0 */
+//
+//  /* USER CODE BEGIN USART1_Init 1 */
+//
+//  /* USER CODE END USART1_Init 1 */
+//  huart1.Instance = USART1;
+//  huart1.Init.BaudRate = 115200;
+//  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+//  huart1.Init.StopBits = UART_STOPBITS_1;
+//  huart1.Init.Parity = UART_PARITY_NONE;
+//  huart1.Init.Mode = UART_MODE_TX_RX;
+//  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+//  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+//  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+//  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+//  if (HAL_UART_Init(&huart1) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
+//  /* USER CODE BEGIN USART1_Init 2 */
+//
+//  /* USER CODE END USART1_Init 2 */
+//
+//}
 
 /**
   * @brief USART3 Initialization Function
@@ -738,7 +750,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 9600;
+  huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
