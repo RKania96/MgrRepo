@@ -31,7 +31,7 @@
 #include "mbport.h"
 #include "mbdata.h"
 
-#include "UART_RingBuffer.h"
+#include "MQTT.h"
 
 
 /* USER CODE END Includes */
@@ -102,14 +102,13 @@ extern void TimingDelay_Decrement(void);
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi3;
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim15;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 
-extern UART_HandleTypeDef huart3;
-extern TIM_HandleTypeDef htim6;
 extern char outputParam[5];
 extern float temperature;
 extern char test[15];
@@ -435,6 +434,20 @@ void TIM2_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM3 global interrupt.
+  */
+void TIM3_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM3_IRQn 0 */
+
+  /* USER CODE END TIM3_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim3);
+  /* USER CODE BEGIN TIM3_IRQn 1 */
+
+  /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
   * @brief This function handles SPI1 global interrupt.
   */
 void SPI1_IRQHandler(void)
@@ -710,6 +723,11 @@ cntrep++;
 			measf.EnergyCH2 = measf.EnergyCH2 + (measf.P2 / 36000.0L);
 			ConvertToModbusDataType(fabs((float)measf.EnergyCH2), EnergyCH2, false);
 		}
+	}
+
+	if(htim == &htim3)
+	{
+		MQTTClient_Publish(&measf);
 	}
 }
 

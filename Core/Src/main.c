@@ -26,7 +26,6 @@
 #include "tmp116.h"
 #include "st7735.h"
 #include "math.h"
-#include "GetTime.h"
 
 #include "MQTT.h"
 #include "mb.h"
@@ -56,11 +55,11 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi3;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim15;
 TIM_HandleTypeDef htim16;
 
-UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
@@ -103,6 +102,7 @@ static void MX_TIM6_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_TIM15_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -149,10 +149,11 @@ int main(void)
   MX_TIM16_Init();
   MX_TIM15_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   NVIC_DisableIRQ(EXTI9_5_IRQn);
 
-  int MqttState = MQTTClient_Start();
+  MQTTClient_Start();
 
 
 
@@ -203,6 +204,7 @@ int main(void)
 	ADS131A0xInit();
 	HAL_TIM_Base_Start_IT(&htim15);
 	HAL_TIM_Base_Start_IT(&htim6);
+	HAL_TIM_Base_Start_IT(&htim3);
 	ADS131A0xCalibrate();
 
 
@@ -246,9 +248,6 @@ int main(void)
 	eMBInit(MB_RTU, 0x01, 5, 9600, MB_PAR_NONE);
 	eMBEnable();
 
-	GetTime_Init();
-	GetTime_timeoutBegin();
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -273,13 +272,6 @@ int main(void)
 	eMBPoll();
 
 	HAL_Delay(100);
-
-	if(MqttState !=0 && !(GetTime_timeoutIsExpired()))
-	{
-		MQTTClient_Publish(&measf);
-		GetTime_timeoutBegin();
-	}
-
 
     /* USER CODE END WHILE */
 
@@ -555,6 +547,51 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 9999;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 3999;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief TIM6 Initialization Function
   * @param None
   * @retval None
@@ -699,41 +736,6 @@ static void MX_TIM16_Init(void)
 
 }
 
-///**
-//  * @brief USART1 Initialization Function
-//  * @param None
-//  * @retval None
-//  */
-//static void MX_USART1_UART_Init(void)
-//{
-//
-//  /* USER CODE BEGIN USART1_Init 0 */
-//
-//  /* USER CODE END USART1_Init 0 */
-//
-//  /* USER CODE BEGIN USART1_Init 1 */
-//
-//  /* USER CODE END USART1_Init 1 */
-//  huart1.Instance = USART1;
-//  huart1.Init.BaudRate = 115200;
-//  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-//  huart1.Init.StopBits = UART_STOPBITS_1;
-//  huart1.Init.Parity = UART_PARITY_NONE;
-//  huart1.Init.Mode = UART_MODE_TX_RX;
-//  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-//  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-//  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-//  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-//  if (HAL_UART_Init(&huart1) != HAL_OK)
-//  {
-//    Error_Handler();
-//  }
-//  /* USER CODE BEGIN USART1_Init 2 */
-//
-//  /* USER CODE END USART1_Init 2 */
-//
-//}
-
 /**
   * @brief USART3 Initialization Function
   * @param None
@@ -821,7 +823,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(SPI3_DONE_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
