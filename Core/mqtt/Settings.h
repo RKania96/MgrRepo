@@ -25,7 +25,7 @@
 #define TOPIC_ENERGY_CH2 "DeviceNo1/EnergyCH2"
 #define TOPIC_Q_CH1  	 "DeviceNo1/Q_CH1"
 #define TOPIC_Q_CH2  	 "DeviceNo1/Q_CH2"
-
+#define TOPIC_TEMP  	 "DeviceNo1/Temp"
 
 //WiFi credentials
 #define WIFI_SSID "UPC16FF1FD"
@@ -38,3 +38,7 @@
 #define CONNECTION_KEEPALIVE_S 60UL
 
 #endif /* INC_SETTINGS_H_ */
+
+
+
+

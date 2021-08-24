@@ -14,6 +14,6 @@
 #include "transport.h"
 
 int MQTTClient_Start();
-int MQTTClient_Publish(const t_measf * data);
+int MQTTClient_Publish(const t_measf * data,  const float * temp);
 
 #endif /* MQTT_MQTT_H_ */

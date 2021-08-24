@@ -44,7 +44,7 @@ int MQTTClient_Start()
 	return 0;
 }
 
-int MQTTClient_Publish(const t_measf * data)
+int MQTTClient_Publish(const t_measf * data, const float * temp)
 {
 	MQTTString topicString = MQTTString_initializer;
 	int length;
@@ -106,9 +106,13 @@ int MQTTClient_Publish(const t_measf * data)
 			topicString.cstring = TOPIC_Q_CH2;
 			length = MQTTSerialize_publish(mqttDataBuffer, sizeof(mqttDataBuffer), 0, 0, 0, 0, topicString, payload, (length = sprintf(payload, "%f", data->Q_CH2)));
 			break;
+		case 11:
+			topicString.cstring = TOPIC_TEMP;
+			length = MQTTSerialize_publish(mqttDataBuffer, sizeof(mqttDataBuffer), 0, 0, 0, 0, topicString, payload, (length = sprintf(payload, "%f", *temp)));
+			break;
 		}
 
-		if( length == transport_sendPacketBuffer(transport_socket, mqttDataBuffer, length)) { topic_cnt = (topic_cnt + 1) % 11; }
+		if( length == transport_sendPacketBuffer(transport_socket, mqttDataBuffer, length)) { topic_cnt = (topic_cnt + 1) % 12; }
 		else { internalState = 0; }
 
 		result = 1;

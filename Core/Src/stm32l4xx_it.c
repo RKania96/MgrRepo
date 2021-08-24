@@ -727,7 +727,7 @@ cntrep++;
 
 	if(htim == &htim3)
 	{
-		MQTTClient_Publish(&measf);
+		MQTTClient_Publish(&measf, &temperature);
 	}
 }
 
