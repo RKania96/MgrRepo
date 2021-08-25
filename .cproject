@@ -104,12 +104,6 @@
                                     <listOptionValue builtIn="false" value="../Drivers/CMSIS/Include"/>
                                     									
                                     <listOptionValue builtIn="false" value="&quot;${workspace_loc:/PowerMeter_v3/Core/Libs/inc}&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${workspace_loc:/PowerMeter_v3/Core/modbus/include}&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${workspace_loc:/PowerMeter_v3/Core/modbus/port}&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${workspace_loc:/PowerMeter_v3/Core/modbus/rtu}&quot;"/>
                                     								
                                 </option>
                                 								

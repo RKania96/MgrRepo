@@ -27,9 +27,6 @@
 #include "st7735.h"
 #include "fonts.h"
 #include "math.h"
-#include "mb.h"
-#include "mbport.h"
-#include "mbdata.h"
 
 #include "MQTT.h"
 
@@ -53,27 +50,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-extern uint16_t downcounter;
-
-extern uint8_t usart3_rx_data_buff[1];
-extern uint8_t usart3_tx_data_buff[1];
-
-uint8_t usart1_tx_data_buff[1]={0};
-uint8_t usart1_rx_data_buff[1]={0};
 
 extern void UART_IRQHandler ();
-
-//#define NB_REG_INPUT_SIZE  10						///< Input register size
-//uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {10,11,12,13,14,15,16,17,18,19};		///< Input register
-//
-//#define NB_REG_HOLD_SIZE  10						///< Keep register size
-//uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
-
-extern uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE];		///< Input register
-//
-//extern uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
-
-
 
 
 /* USER CODE END PV */
@@ -101,12 +79,10 @@ extern void TimingDelay_Decrement(void);
 /* External variables --------------------------------------------------------*/
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi3;
-extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim15;
 extern UART_HandleTypeDef huart1;
-extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 
 extern char outputParam[5];
@@ -114,139 +90,6 @@ extern float temperature;
 extern char test[15];
 
 
-int convertTPP(float fValue)
-{
-	uint16_t iValue = 0;
-
-	if(0 > fValue)
-	{
-		iValue |= (1 << 15);
-		fValue *= (-1);
-	}
-
-	iValue |= (uint16_t)(fValue*10);
-
-	return iValue;
-}
-int convertII(float fValue, bool isMili)
-{
-	uint16_t iValue = 0;
-
-	if(0 > fValue)
-	{
-		iValue |= (1 << 15);
-		fValue *= (-1);
-	}
-
-	iValue |= (uint16_t)(fValue*100);
-
-	if(isMili) { iValue |= (1 << 14); }
-
-	return iValue;
-}
-
-int convertVV(float fvalue, bool isFirstCalc, bool isMili)
-{
-	uint16_t sign = 0;
-	if(0 > fvalue)
-	{
-		sign |= (1 << 15);
-		fvalue *= (-1);
-	}
-
-	uint16_t r = (uint16_t)fvalue;
-	uint16_t d = (uint16_t)((fvalue-r)*100);
-
-	if(isFirstCalc)
-	{
-		if(isMili) { r |= (1 << 14); }
-		r |= sign;
-		return r;
-	}
-	return d;
-}
-
-int convertEQ(float fValue, bool isFirstCalc)
-{
-	uint16_t r = (uint16_t)fValue;
-	uint32_t d = (uint32_t)((fValue-r)*1000000);
-
-	if(isFirstCalc)
-	{
-		r = (r << 4) | ( d >> 16 );
-		return r;
-	}
-
-	d &= 0xFFFF;
-	return d;
-}
-
-typedef enum
-{
-	Temp 		= 0,
-	V1	 		= 1,
-	I1	 		= 3,
-	V2	 		= 4,
-	I2	 		= 6,
-	P1			= 7,
-	P2			= 8,
-	Eff			= 9,
-	Q_CH1		= 10,
-	Q_CH2		= 12,
-	EnergyCH1 	= 14,
-	EnergyCH2 	= 16
-} mReg;
-
-void ConvertToModbusDataType(float fValue, mReg mRegister, bool isMili )
-{
-	switch(mRegister)
-	{
-	case Temp:
-		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
-		break;
-	case V1:
-		MB_REG_INPUT_BUF[mRegister] = convertVV(fValue, true, isMili );
-		MB_REG_INPUT_BUF[mRegister+1] = convertVV(fValue, false, false);
-		break;
-	case I1:
-		MB_REG_INPUT_BUF[mRegister] = convertII(fValue, isMili);
-		break;
-	case V2:
-		MB_REG_INPUT_BUF[mRegister] = convertVV(fValue, true, isMili);
-		MB_REG_INPUT_BUF[mRegister+1] = convertVV(fValue, false, false);
-		break;
-	case I2:
-		MB_REG_INPUT_BUF[mRegister] = convertII(fValue, isMili);
-		break;
-	case P1:
-		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
-		break;
-	case P2:
-		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
-		break;
-	case Eff:
-		MB_REG_INPUT_BUF[mRegister] = (int)fValue;
-		break;
-	case Q_CH1:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	case Q_CH2:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	case EnergyCH1:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	case EnergyCH2:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	default:
-		break;
-	}
-}
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -414,26 +257,6 @@ void TIM1_BRK_TIM15_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles TIM2 global interrupt.
-  */
-void TIM2_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM2_IRQn 0 */
-	  if(__HAL_TIM_GET_FLAG(&htim2, TIM_FLAG_UPDATE) != RESET && __HAL_TIM_GET_IT_SOURCE(&htim2, TIM_IT_UPDATE) !=RESET) {
-	    __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
-	    if (!--downcounter) {
-		  //cycle1 = DWT->CYCCNT;
-	      pxMBPortCBTimerExpired();
-	    }
-	  }
-  /* USER CODE END TIM2_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim2);
-  /* USER CODE BEGIN TIM2_IRQn 1 */
-
-  /* USER CODE END TIM2_IRQn 1 */
-}
-
-/**
   * @brief This function handles TIM3 global interrupt.
   */
 void TIM3_IRQHandler(void)
@@ -473,54 +296,6 @@ void USART1_IRQHandler(void)
   /* USER CODE BEGIN USART1_IRQn 1 */
 
   /* USER CODE END USART1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles USART3 global interrupt.
-  */
-void USART3_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART3_IRQn 0 */
-	  uint32_t tmp_flag = __HAL_UART_GET_FLAG(&huart3, UART_FLAG_RXNE);
-	  uint32_t tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart3, UART_IT_RXNE);
-
-	  if((tmp_flag != RESET) && (tmp_it_source != RESET)) {
-		 pxMBFrameCBByteReceived();
-
-		 //CHAR cByte;
-		 //( void )xMBPortSerialGetByte( &cByte );
-
-	//	 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
-	//	 if( uiCnt < 10 )
-	//	   {
-	//		 while(uiCnt < 10)
-	//		 {
-	//			 ( void )xMBPortSerialPutByte( 'a' );
-	//			 HAL_Delay(100);
-	//			 uiCnt++;
-	//		 }
-	//
-	//	     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-	//	   }
-	//	 else
-	//	   {
-	//	     vMBPortSerialEnable( FALSE, FALSE );
-	//	     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-	//	   }
-
-		 __HAL_UART_CLEAR_PEFLAG(&huart3);
-		 return;
-	  }
-
-	  if((__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TXE) != RESET) &&(__HAL_UART_GET_IT_SOURCE(&huart3, UART_IT_TXE) != RESET)) {
-		 pxMBFrameCBTransmitterEmpty();
-		 return ;
-	  }
-  /* USER CODE END USART3_IRQn 0 */
-  HAL_UART_IRQHandler(&huart3);
-  /* USER CODE BEGIN USART3_IRQn 1 */
-
-  /* USER CODE END USART3_IRQn 1 */
 }
 
 /**
@@ -581,12 +356,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				sprintf(test, "%.2f", measf.Ch4);
 				ST7735_WriteString(135, 0 + 5, " V", Font_11x18, ST7735_WHITE,
 						ST7735_BLUE);
-				ConvertToModbusDataType(measf.Ch4, V1, false);
 			} else if (fabs(measf.Ch4) <= 1.0) {
 				sprintf(test, "%.2f", measf.Ch4 * 1000.0);
 				ST7735_WriteString(135, 0 + 5, "mV", Font_11x18, ST7735_WHITE,
 						ST7735_BLUE);
-				ConvertToModbusDataType(measf.Ch4*1000, V1, true);
 			}
 
 
@@ -597,12 +370,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f", measf.Ch3);
 					ST7735_WriteString(135, 25 + 5, " A", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch3, I1, false);
 				} else if (fabs(measf.Ch3) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch3 * 1000.0);
 					ST7735_WriteString(135, 25 + 5, "mA", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch3*1000, I1, true);
 				}
 
 
@@ -614,12 +385,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f  ", measf.Ch2);
 					ST7735_WriteString(135, 50 + 5, " V", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch2, V2, false);
 				} else if (fabs(measf.Ch2) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch2 * 1000.0);
 					ST7735_WriteString(135, 50 + 5, "mV", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch2*1000, V2, true);
 				}
 
 
@@ -630,19 +399,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f  ", measf.Ch1);
 					ST7735_WriteString(135, 75 + 5, " A", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch1, I2, false);
 				} else if (fabs(measf.Ch1) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch1 * 1000.0);
 					ST7735_WriteString(135, 75 + 5, "mA", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch2*1000, I2, true);
 				}
 
 			ST7735_WriteString(35, 75 + 5, test, Font_11x18, ST7735_WHITE, ST7735_BLUE);
 
 		    sprintf(test, "%.1f*C", temperature);
 			ST7735_WriteString(5, 100 + 5, test, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-			ConvertToModbusDataType(temperature, Temp, false);
 
 
 static uint8_t cntrep;
@@ -663,7 +429,6 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "P1", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			 sprintf(outputParam, "%.2f %",measf.P1);
 					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-					ConvertToModbusDataType(measf.P1, P1, false);
 
 		}
 		else if(cnt == 2)
@@ -671,7 +436,6 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "P2", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			 sprintf(outputParam, "%.2f %",measf.P2);
 					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-					ConvertToModbusDataType(measf.P2, P2, false);
 
 		}
 		cnt ++ ;
@@ -693,35 +457,29 @@ cntrep++;
 		if (measf.P1 / measf.P2 > 1.0)
 		{
 			measf.Eff = ( measf.P2 / measf.P1 ) * 100;
-			ConvertToModbusDataType(measf.Eff, Eff, false);
 		}
 		else
 		{
 			measf.Eff = ( measf.P1 / measf.P2 ) * 100;
-			ConvertToModbusDataType(measf.Eff, Eff, false);
 		}
 
 		if (fabs(measf.Ch3) >= 0.05)
 		{
 			measf.Q_CH1 = measf.Q_CH1 + (measf.Ch3 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.Q_CH1), Q_CH1, false);
 		}
 
 		if (fabs(measf.Ch1) >= 0.05)
 		{
 			measf.Q_CH2 = measf.Q_CH2 + (measf.Ch1 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.Q_CH2), Q_CH2, false);
 		}
 
 		if (fabs(measf.P1) >= 1.0)
 		{
 			measf.EnergyCH1 = measf.EnergyCH1 + (measf.P1 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.EnergyCH1), EnergyCH1, false);
 		}
 		if (fabs(measf.P2) >= 1.0)
 		{
 			measf.EnergyCH2 = measf.EnergyCH2 + (measf.P2 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.EnergyCH2), EnergyCH2, false);
 		}
 	}
 
