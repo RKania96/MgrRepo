@@ -59,17 +59,39 @@ extern uint8_t usart3_tx_data_buff[1];
 uint8_t usart1_tx_data_buff[1]={0};
 uint8_t usart1_rx_data_buff[1]={0};
 
+#define TEMP_MIN -50
+#define TEMP_MAX 150
+#define VOLT_MIN 0
+#define VOLT_MAX 1000
+#define AMP_MIN  -300
+#define AMP_MAX  300
+#define POW_MIN  -1000000
+#define POW_MAX  1000000
+#define ENRG_MIN -1000000
+#define ENRG_MAX 1000000
+#define Q_MIN    -1000000
+#define Q_MAX    1000000
+#define CHRG_MIN 0
+#define CHRG_MAX 100
+#define CAPA_MIN 0
+#define CAPA_MAX 100
+#define INSO_MIN 0
+#define INSO_MAX 1000
+#define NCYC_MIN 0
+#define NCYC_MAX 1000
+
 //#define NB_REG_INPUT_SIZE  10						///< Input register size
 //uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {10,11,12,13,14,15,16,17,18,19};		///< Input register
 //
 //#define NB_REG_HOLD_SIZE  10						///< Keep register size
 //uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
 
-extern uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE];		///< Input register
+extern uint16_t MB_REG_INPUT_BUF[NB_REG_INPUT_SIZE] = {0};		///< Input register
+/*ConvertToModbusDataType(230,V_CH1);
+ConvertToModbusDataType(-4,I_CH1);
+ConvertToModbusDataType(999999.9,P_CH1);*/ //zestaw testowy powinno wyjść (230,32772,152,38527)
 //
 //extern uint16_t MB_REG_HOLD_BUF[NB_REG_HOLD_SIZE];			///< Holding register
-
-
 
 
 /* USER CODE END PV */
@@ -110,7 +132,7 @@ extern float temperature;
 extern char test[15];
 
 
-int convertTPP(float fValue)
+int convertTI(float fValue)
 {
 	uint16_t iValue = 0;
 
@@ -120,125 +142,141 @@ int convertTPP(float fValue)
 		fValue *= (-1);
 	}
 
-	iValue |= (uint16_t)(fValue*10);
-
-	return iValue;
-}
-int convertII(float fValue, bool isMili)
-{
-	uint16_t iValue = 0;
-
-	if(0 > fValue)
-	{
-		iValue |= (1 << 15);
-		fValue *= (-1);
-	}
-
-	iValue |= (uint16_t)(fValue*100);
-
-	if(isMili) { iValue |= (1 << 14); }
+	iValue |= (uint16_t)(fValue);
 
 	return iValue;
 }
 
-int convertVV(float fvalue, bool isFirstCalc, bool isMili)
+int convertPEQ(float fvalue, bool isFirstCalc)
 {
-	uint16_t sign = 0;
-	if(0 > fvalue)
-	{
-		sign |= (1 << 15);
-		fvalue *= (-1);
-	}
+    uint16_t sign = 0;
+    if(0 > fvalue)
+    {
+        sign |= (1 << 15);
+        fvalue *= (-1);
+    }
 
-	uint16_t r = (uint16_t)fvalue;
-	uint16_t d = (uint16_t)((fvalue-r)*100);
+    uint32_t r = (uint32_t)(fvalue*10);
 
-	if(isFirstCalc)
-	{
-		if(isMili) { r |= (1 << 14); }
-		r |= sign;
-		return r;
-	}
-	return d;
-}
+    if(isFirstCalc)
+    {
+        r = (r >> 16);
+        r |= sign;
+        return r;
+    }
 
-int convertEQ(float fValue, bool isFirstCalc)
-{
-	uint16_t r = (uint16_t)fValue;
-	uint32_t d = (uint32_t)((fValue-r)*1000000);
-
-	if(isFirstCalc)
-	{
-		r = (r << 4) | ( d >> 16 );
-		return r;
-	}
-
-	d &= 0xFFFF;
-	return d;
+	uint16_t d = r;
+    return d;
 }
 
 typedef enum
 {
-	Temp 		= 0,
-	V1	 		= 1,
-	I1	 		= 3,
-	V2	 		= 4,
-	I2	 		= 6,
-	P1			= 7,
-	P2			= 8,
-	Eff			= 9,
-	Q_CH1		= 10,
-	Q_CH2		= 12,
-	EnergyCH1 	= 14,
-	EnergyCH2 	= 16
+	V_CH1           = 0,
+	I_CH1           = 1,
+	P_CH1           = 2,
+	Energy_CH1      = 4,
+	Status_1        = 6,
+	Temp_1          = 7,
+	Q_CH1           = 8,
+	NoOfCycles      = 10,
+    V_CH2           = 11,
+    I_CH2           = 12,
+    P_CH2           = 13,
+    Energy_CH2      = 15,
+    Status_2        = 17,
+    Temp_2          = 18,
+    ChargeDegree    = 19,    // Naslonecznienie
+    Capacity        = 20,    // Energia
+	Insolation      = 21,
+	Energy          = 22,
+	Eff				= 24
 } mReg;
 
-void ConvertToModbusDataType(float fValue, mReg mRegister, bool isMili )
+void ConvertToModbusDataType(float fValue, mReg mRegister)
 {
 	switch(mRegister)
 	{
-	case Temp:
-		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
+    case V_CH1:
+        if(fValue>=VOLT_MIN && fValue<=VOLT_MAX) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+        break;
+    case I_CH1:
+        if(fValue>=AMP_MIN && fValue<=AMP_MAX) { MB_REG_INPUT_BUF[mRegister] = convertTI(fValue); }
+        break;
+    case P_CH1:
+        if(fValue>POW_MIN && fValue<POW_MAX)
+        {
+            MB_REG_INPUT_BUF[mRegister] = convertPEQ(fValue, true);
+            MB_REG_INPUT_BUF[mRegister+1] = convertPEQ(fValue, false);
+        }
+        break;
+    case Energy_CH1:
+        if(fValue>ENRG_MIN && fValue<ENRG_MAX)
+        {
+            MB_REG_INPUT_BUF[mRegister] = convertPEQ(fValue, true);
+            MB_REG_INPUT_BUF[mRegister+1] = convertPEQ(fValue, false);
+        }
+        break;
+    case Status_1:
+        if(fValue>=0 && fValue<=1) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+        break;
+    case Temp_1:
+        if(fValue>=TEMP_MIN && fValue<=TEMP_MAX) { MB_REG_INPUT_BUF[mRegister] = convertTI(fValue); }
 		break;
-	case V1:
-		MB_REG_INPUT_BUF[mRegister] = convertVV(fValue, true, isMili );
-		MB_REG_INPUT_BUF[mRegister+1] = convertVV(fValue, false, false);
-		break;
-	case I1:
-		MB_REG_INPUT_BUF[mRegister] = convertII(fValue, isMili);
-		break;
-	case V2:
-		MB_REG_INPUT_BUF[mRegister] = convertVV(fValue, true, isMili);
-		MB_REG_INPUT_BUF[mRegister+1] = convertVV(fValue, false, false);
-		break;
-	case I2:
-		MB_REG_INPUT_BUF[mRegister] = convertII(fValue, isMili);
-		break;
-	case P1:
-		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
-		break;
-	case P2:
-		MB_REG_INPUT_BUF[mRegister] = convertTPP(fValue);
-		break;
+    case Q_CH1:
+        if(fValue>Q_MIN && fValue<Q_MAX)
+        {
+            MB_REG_INPUT_BUF[mRegister] = convertPEQ(fValue, true);
+            MB_REG_INPUT_BUF[mRegister+1] = convertPEQ(fValue, false);
+        }
+        break;
+    case NoOfCycles:
+        if(fValue>=NCYC_MIN && fValue<=NCYC_MAX) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+        break;
+    case V_CH2:
+        if(fValue>=VOLT_MIN && fValue<=VOLT_MAX) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+        break;
+    case I_CH2:
+        if(fValue>=AMP_MIN && fValue<=AMP_MAX) { MB_REG_INPUT_BUF[mRegister] = convertTI(fValue); }
+        break;
+    case P_CH2:
+        if(fValue>POW_MIN && fValue<POW_MAX)
+        {
+            MB_REG_INPUT_BUF[mRegister] = convertPEQ(fValue, true);
+            MB_REG_INPUT_BUF[mRegister+1] = convertPEQ(fValue, false);
+        }
+        break;
+    case Energy_CH2:
+        if(fValue>ENRG_MIN && fValue<ENRG_MAX)
+        {
+            MB_REG_INPUT_BUF[mRegister] = convertPEQ(fValue, true);
+            MB_REG_INPUT_BUF[mRegister+1] = convertPEQ(fValue, false);
+        }
+        break;
+    case Status_2:
+        if(fValue>=0 && fValue<=1) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+        break;
+    case Temp_2:
+        if(fValue>=TEMP_MIN && fValue<=TEMP_MAX) { MB_REG_INPUT_BUF[mRegister] = convertTI(fValue); }
+        break;
+	case ChargeDegree:
+	    if(fValue>=CHRG_MIN && fValue<=CHRG_MAX) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+	    break;
+	case Capacity:
+	    if(fValue>=CAPA_MIN && fValue<=CAPA_MAX) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+	    break;
+	case Insolation:
+	    if(fValue>=INSO_MIN && fValue<=INSO_MAX) { MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue; }
+	    break;
+	case Energy:
+        if(fValue>ENRG_MIN && fValue<ENRG_MAX)
+        {
+            MB_REG_INPUT_BUF[mRegister] = convertPEQ(fValue, true);
+            MB_REG_INPUT_BUF[mRegister+1] = convertPEQ(fValue, false);
+        }
+	    break;
 	case Eff:
-		MB_REG_INPUT_BUF[mRegister] = (int)fValue;
-		break;
-	case Q_CH1:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	case Q_CH2:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	case EnergyCH1:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
-	case EnergyCH2:
-		MB_REG_INPUT_BUF[mRegister] = convertEQ(fValue, true);
-		MB_REG_INPUT_BUF[mRegister+1] = convertEQ(fValue, false);
-		break;
+		MB_REG_INPUT_BUF[mRegister] = (uint16_t)fValue;
+	    break;
 	default:
 		break;
 	}
@@ -549,12 +587,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				sprintf(test, "%.2f", measf.Ch4);
 				ST7735_WriteString(135, 0 + 5, " V", Font_11x18, ST7735_WHITE,
 						ST7735_BLUE);
-				ConvertToModbusDataType(measf.Ch4, V1, false);
+				ConvertToModbusDataType(measf.Ch4, V_CH1);
 			} else if (fabs(measf.Ch4) <= 1.0) {
 				sprintf(test, "%.2f", measf.Ch4 * 1000.0);
 				ST7735_WriteString(135, 0 + 5, "mV", Font_11x18, ST7735_WHITE,
 						ST7735_BLUE);
-				ConvertToModbusDataType(measf.Ch4*1000, V1, true);
+				ConvertToModbusDataType(measf.Ch4*1000, V_CH1);
 			}
 
 
@@ -565,12 +603,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f", measf.Ch3);
 					ST7735_WriteString(135, 25 + 5, " A", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch3, I1, false);
+					ConvertToModbusDataType(measf.Ch3, I_CH1);
 				} else if (fabs(measf.Ch3) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch3 * 1000.0);
 					ST7735_WriteString(135, 25 + 5, "mA", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch3*1000, I1, true);
+					ConvertToModbusDataType(measf.Ch3*1000, I_CH1);
 				}
 
 
@@ -582,12 +620,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f  ", measf.Ch2);
 					ST7735_WriteString(135, 50 + 5, " V", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch2, V2, false);
+					ConvertToModbusDataType(measf.Ch2, V_CH2);
 				} else if (fabs(measf.Ch2) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch2 * 1000.0);
 					ST7735_WriteString(135, 50 + 5, "mV", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch2*1000, V2, true);
+					ConvertToModbusDataType(measf.Ch2*1000, V_CH2);
 				}
 
 
@@ -598,19 +636,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					sprintf(test, "%.2f  ", measf.Ch1);
 					ST7735_WriteString(135, 75 + 5, " A", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch1, I2, false);
+					ConvertToModbusDataType(measf.Ch1, I_CH2);
 				} else if (fabs(measf.Ch1) <= 1.0) {
 					sprintf(test, "%.2f", measf.Ch1 * 1000.0);
 					ST7735_WriteString(135, 75 + 5, "mA", Font_11x18, ST7735_WHITE,
 							ST7735_BLUE);
-					ConvertToModbusDataType(measf.Ch2*1000, I2, true);
+					ConvertToModbusDataType(measf.Ch2*1000, I_CH2);
 				}
 
 			ST7735_WriteString(35, 75 + 5, test, Font_11x18, ST7735_WHITE, ST7735_BLUE);
 
 		    sprintf(test, "%.1f*C", temperature);
 			ST7735_WriteString(5, 100 + 5, test, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-			ConvertToModbusDataType(temperature, Temp, false);
+			ConvertToModbusDataType(temperature, Temp_1);
 
 
 static uint8_t cntrep;
@@ -631,7 +669,7 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "P1", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			 sprintf(outputParam, "%.2f %",measf.P1);
 					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-					ConvertToModbusDataType(measf.P1, P1, false);
+					ConvertToModbusDataType(measf.P1, P_CH1);
 
 		}
 		else if(cnt == 2)
@@ -639,7 +677,7 @@ cntrep++;
 			ST7735_WriteString(80, 100 + 5, "P2", Font_11x18, ST7735_WHITE, ST7735_BLUE);
 			 sprintf(outputParam, "%.2f %",measf.P2);
 					ST7735_WriteString(105, 100 + 5, outputParam, Font_11x18, ST7735_WHITE, ST7735_BLUE);
-					ConvertToModbusDataType(measf.P2, P2, false);
+					ConvertToModbusDataType(measf.P2, P_CH2);
 
 		}
 		cnt ++ ;
@@ -661,35 +699,35 @@ cntrep++;
 		if (measf.P1 / measf.P2 > 1.0)
 		{
 			measf.Eff = ( measf.P2 / measf.P1 ) * 100;
-			ConvertToModbusDataType(measf.Eff, Eff, false);
+			ConvertToModbusDataType(measf.Eff, Eff);
 		}
 		else
 		{
 			measf.Eff = ( measf.P1 / measf.P2 ) * 100;
-			ConvertToModbusDataType(measf.Eff, Eff, false);
+			ConvertToModbusDataType(measf.Eff, Eff);
 		}
 
 		if (fabs(measf.Ch3) >= 0.05)
 		{
 			measf.Q_CH1 = measf.Q_CH1 + (measf.Ch3 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.Q_CH1), Q_CH1, false);
+			ConvertToModbusDataType(fabs((float)measf.Q_CH1), Q_CH1);
 		}
 
 		if (fabs(measf.Ch1) >= 0.05)
 		{
 			measf.Q_CH2 = measf.Q_CH2 + (measf.Ch1 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.Q_CH2), Q_CH2, false);
+			//ConvertToModbusDataType(fabs((float)measf.Q_CH2), Q_CH2);
 		}
 
 		if (fabs(measf.P1) >= 1.0)
 		{
 			measf.EnergyCH1 = measf.EnergyCH1 + (measf.P1 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.EnergyCH1), EnergyCH1, false);
+			ConvertToModbusDataType(fabs((float)measf.EnergyCH1), Energy_CH1);
 		}
 		if (fabs(measf.P2) >= 1.0)
 		{
 			measf.EnergyCH2 = measf.EnergyCH2 + (measf.P2 / 36000.0L);
-			ConvertToModbusDataType(fabs((float)measf.EnergyCH2), EnergyCH2, false);
+			ConvertToModbusDataType(fabs((float)measf.EnergyCH2), Energy_CH2);
 		}
 	}
 }
