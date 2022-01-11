@@ -8,6 +8,7 @@
 #include "GetTime.h"
 
 #define TIMEOUT_TICKS 		800000000
+//#define TIMEOUT_TICKS 		400000000
 
 static unsigned long int ticks_t0;
 

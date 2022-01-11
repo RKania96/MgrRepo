@@ -49,7 +49,10 @@ int NetworkSend(unsigned char *pMqttData, unsigned int dataLength)
 	}
 
 	// Fall-back on error
-	if(espResult == ESP_ERROR) { return ESP_ERROR; }
+	if(espResult == ESP_ERROR) {
+		NetworkSendState = 2;
+		return ESP_ERROR;
+	}
 
 	// In progress.
 	return 0;

@@ -109,7 +109,7 @@ int ESP_Send(unsigned char *data, const uint8_t dataLength)
 
 	RingBuffer_WriteLenghtString(data,dataLength);
 
-	if(!(ESP_WaitResult(RingBuffer_WaitForGivenResponse(ESP_RESP_SEND_OK)))) { return ESP_ERROR; }
+	//if(!(ESP_WaitResult(RingBuffer_WaitForGivenResponse(ESP_RESP_SEND_OK)))) { return ESP_ERROR; }
 
 
 	return ESP_OK;
